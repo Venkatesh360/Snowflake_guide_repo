@@ -405,7 +405,8 @@ COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS_EX
     FILE_FORMAT= (TYPE = CSV FIELD_DELIMITER=',' SKIP_HEADER=1)
     FILES = ('OrderDetails_error.csv')
     ON_ERROR = 'CONTINUE';
-```### Validating Skipped Records
+```
+### Validating Skipped Records
 
 After loading data with `ON_ERROR = CONTINUE`, you can use the `VALIDATE()` function to retrieve records that were skipped due to errors.
 
