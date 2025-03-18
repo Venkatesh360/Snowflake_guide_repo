@@ -1,4 +1,4 @@
-# Snowflake: Key Concepts & Architecture
+# Snowflake
 
 ## Overview
 Snowflake is a self-managed data cloud platform that enables data storage, processing, and analytics with enhanced flexibility and performance compared to traditional systems. It is not built on existing database technologies but combines a new SQL engine with a cloud-native architecture.
