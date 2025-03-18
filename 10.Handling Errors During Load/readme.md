@@ -43,9 +43,3 @@ COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS_EX
 
 ## ON_ERROR = SKIP_FILE_<number>
 ```sql
-COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS_EX
-    FROM @MANAGE_DB.external_stages.aws_stage_errorex
-    FILE_FORMAT= (TYPE = CSV FIELD_DELIMITER=',' SKIP_HEADER=1)
-    FILES = ('OrderDetails_error.csv','OrderDetails_error2.csv')
-    ON_ERROR = 'SKIP_FILE_3';
-```
