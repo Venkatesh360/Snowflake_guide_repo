@@ -296,3 +296,147 @@ COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS
 ```
 
 For detailed options, refer to the [Snowflake Documentation](https://docs.snowflake.com/).
+
+
+## Transforming Data During Load
+
+Snowflake allows transformations while loading data using SQL functions in the `COPY INTO` command.
+
+### Example - Loading with a SELECT Statement
+```sql
+COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS_EX
+    FROM (SELECT s.$1, s.$2 FROM @MANAGE_DB.external_stages.aws_stage s)
+    FILE_FORMAT= (TYPE = CSV FIELD_DELIMITER=',' SKIP_HEADER=1)
+    FILES=('OrderDetails.csv');
+```
+
+### Example 1 - Creating and Loading a Table
+```sql
+CREATE OR REPLACE TABLE OUR_FIRST_DB.PUBLIC.ORDERS_EX (
+    ORDER_ID VARCHAR(30),
+    AMOUNT INT
+);
+
+SELECT * FROM OUR_FIRST_DB.PUBLIC.ORDERS_EX;
+```
+
+### Example 2 - Adding a Computed Column
+```sql
+CREATE OR REPLACE TABLE OUR_FIRST_DB.PUBLIC.ORDERS_EX (
+    ORDER_ID VARCHAR(30),
+    AMOUNT INT,
+    PROFIT INT,
+    PROFITABLE_FLAG VARCHAR(30)
+);
+
+COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS_EX
+    FROM (SELECT 
+            s.$1,
+            s.$2, 
+            s.$3,
+            CASE WHEN CAST(s.$3 AS INT) < 0 THEN 'not profitable' ELSE 'profitable' END 
+          FROM @MANAGE_DB.external_stages.aws_stage s)
+    FILE_FORMAT= (TYPE = CSV FIELD_DELIMITER=',' SKIP_HEADER=1)
+    FILES=('OrderDetails.csv');
+
+SELECT * FROM OUR_FIRST_DB.PUBLIC.ORDERS_EX;
+```
+
+### Example 3 - Extracting Substrings
+```sql
+CREATE OR REPLACE TABLE OUR_FIRST_DB.PUBLIC.ORDERS_EX (
+    ORDER_ID VARCHAR(30),
+    AMOUNT INT,
+    PROFIT INT,
+    CATEGORY_SUBSTRING VARCHAR(5)
+);
+
+COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS_EX
+    FROM (SELECT 
+            s.$1,
+            s.$2, 
+            s.$3,
+            SUBSTRING(s.$5,1,5) 
+          FROM @MANAGE_DB.external_stages.aws_stage s)
+    FILE_FORMAT= (TYPE = CSV FIELD_DELIMITER=',' SKIP_HEADER=1)
+    FILES=('OrderDetails.csv');
+
+SELECT * FROM OUR_FIRST_DB.PUBLIC.ORDERS_EX;
+```
+## Error Handling in Snowflake Data Load
+
+### Creating a New Stage
+```sql
+CREATE OR REPLACE STAGE MANAGE_DB.external_stages.aws_stage_errorex
+    URL='s3://bucketsnowflakes4';
+```
+
+### Listing Files in the Stage
+```sql
+LIST @MANAGE_DB.external_stages.aws_stage_errorex;
+```
+
+### Creating an Example Table
+```sql
+CREATE OR REPLACE TABLE OUR_FIRST_DB.PUBLIC.ORDERS_EX (
+    ORDER_ID VARCHAR(30),
+    AMOUNT INT,
+    PROFIT INT,
+    QUANTITY INT,
+    CATEGORY VARCHAR(30),
+    SUBCATEGORY VARCHAR(30));
+```
+
+### Handling Errors with ON_ERROR Options
+#### Default Error Handling (Abort on Error)
+```sql
+COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS_EX
+    FROM @MANAGE_DB.external_stages.aws_stage_errorex
+    FILE_FORMAT= (TYPE = CSV FIELD_DELIMITER=',' SKIP_HEADER=1)
+    FILES = ('OrderDetails_error.csv');
+```
+
+#### ON_ERROR = CONTINUE
+```sql
+COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS_EX
+    FROM @MANAGE_DB.external_stages.aws_stage_errorex
+    FILE_FORMAT= (TYPE = CSV FIELD_DELIMITER=',' SKIP_HEADER=1)
+    FILES = ('OrderDetails_error.csv')
+    ON_ERROR = 'CONTINUE';
+```
+
+#### ON_ERROR = SKIP_FILE
+```sql
+COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS_EX
+    FROM @MANAGE_DB.external_stages.aws_stage_errorex
+    FILE_FORMAT= (TYPE = CSV FIELD_DELIMITER=',' SKIP_HEADER=1)
+    FILES = ('OrderDetails_error.csv','OrderDetails_error2.csv')
+    ON_ERROR = 'SKIP_FILE';
+```
+
+#### ON_ERROR = SKIP_FILE_<number>
+```sql
+COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS_EX
+    FROM @MANAGE_DB.external_stages.aws_stage_errorex
+    FILE_FORMAT= (TYPE = CSV FIELD_DELIMITER=',' SKIP_HEADER=1)
+    FILES = ('OrderDetails_error.csv','OrderDetails_error2.csv')
+    ON_ERROR = 'SKIP_FILE_3';
+```
+
+### Creating and Using File Format Objects
+```sql
+CREATE OR REPLACE SCHEMA MANAGE_DB.file_formats;
+CREATE OR REPLACE FILE FORMAT MANAGE_DB.file_formats.my_file_format;
+DESC FILE FORMAT MANAGE_DB.file_formats.my_file_format;
+```
+
+#### Using a File Format Object in COPY Command
+```sql
+COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS_EX
+    FROM @MANAGE_DB.external_stages.aws_stage_errorex
+    FILE_FORMAT= (FORMAT_NAME=MANAGE_DB.file_formats.my_file_format)
+    FILES = ('OrderDetails_error.csv')
+    ON_ERROR = 'SKIP_FILE_3';
+```
+
+For detailed options, refer to the [Snowflake Documentation](https://docs.snowflake.com/).
