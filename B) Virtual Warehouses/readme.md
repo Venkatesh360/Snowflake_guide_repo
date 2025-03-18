@@ -1,4 +1,3 @@
-
 # Warehouses in Snowflake
 Warehouses are required for query execution and DML operations, including data loading. They can be dynamically resized and automatically started or suspended.
 
@@ -21,6 +20,28 @@ Multi-cluster warehouses automatically scale based on query concurrency. They ar
   - **Standard:** Adds clusters only when queries are queued.
   - **Economy:** Adds clusters more conservatively to optimize cost.
 - **Auto-Suspension:** Multi-cluster warehouses suspend only when the minimum cluster count is reached.
+
+## Creating Warehouses
+### Creating a Simple Warehouse
+To create a standard warehouse:
+```sql
+CREATE WAREHOUSE my_warehouse
+  WITH WAREHOUSE_SIZE = 'SMALL'
+  AUTO_SUSPEND = 300
+  AUTO_RESUME = TRUE;
+```
+
+### Creating a Multi-Cluster Warehouse
+To create a multi-cluster warehouse:
+```sql
+CREATE WAREHOUSE my_multi_cluster_wh
+  WITH WAREHOUSE_SIZE = 'LARGE'
+  AUTO_SUSPEND = 300
+  AUTO_RESUME = TRUE
+  MIN_CLUSTER_COUNT = 2
+  MAX_CLUSTER_COUNT = 5
+  SCALING_POLICY = 'STANDARD';
+```
 
 ## Warehouse Size & Credit Usage
 | Warehouse Size | Credits/Hour | Notes |
@@ -57,4 +78,3 @@ Multi-cluster warehouses automatically scale based on query concurrency. They ar
 - Default warehouse precedence: User setting → Client configuration → Command-line parameter.
 
 For more details, refer to the [Snowflake Documentation](https://docs.snowflake.com/).
-
