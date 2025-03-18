@@ -173,3 +173,126 @@ Organizations can define custom roles to fit their specific needs:
   - Use **separate roles for different responsibilities** (e.g., `DATA_INGESTION`, `REPORTING`).
   - Regularly **review and audit role assignments** to ensure compliance.
 
+## Loading Data in Snowflake
+
+### Stages in Snowflake
+
+Stages in Snowflake are storage locations used for loading and unloading data. They act as an intermediate layer between the source data and Snowflake tables.
+
+#### Types of Stages
+
+1. **Internal Stages**
+   - Managed by Snowflake.
+   - Stores data within Snowflake before loading it into tables.
+   - Types:
+     - **User Stage:** Automatically created for each user.
+     - **Table Stage:** Automatically created for each table.
+     - **Named Stage:** Manually created for organized storage.
+
+2. **External Stages**
+   - Reside in cloud storage services like AWS S3, Azure Blob Storage, or Google Cloud Storage.
+   - Require integration with Snowflake using storage credentials.
+   
+#### Managing External Stages
+
+To create and manage external stages, use the following SQL commands:
+
+##### Creating an External Stage
+```sql
+CREATE OR REPLACE DATABASE MANAGE_DB;
+CREATE OR REPLACE SCHEMA external_stages;
+
+CREATE OR REPLACE STAGE MANAGE_DB.external_stages.aws_stage
+    URL='s3://bucketsnowflakes3'
+    CREDENTIALS=(AWS_KEY_ID='ABCD_DUMMY_ID' AWS_SECRET_KEY='1234abcd_key');
+```
+
+##### Describing an External Stage
+```sql
+DESC STAGE MANAGE_DB.external_stages.aws_stage;
+```
+
+##### Altering an External Stage
+```sql
+ALTER STAGE aws_stage
+    SET CREDENTIALS=(AWS_KEY_ID='XYZ_DUMMY_ID' AWS_SECRET_KEY='987xyz');
+```
+
+##### Creating a Publicly Accessible External Stage
+```sql
+CREATE OR REPLACE STAGE MANAGE_DB.external_stages.aws_stage
+    URL='s3://bucketsnowflakes3';
+```
+
+##### Listing Files in a Stage
+```sql
+LIST @MANAGE_DB.external_stages.aws_stage;
+```
+
+### Copying Data into Snowflake
+
+The `COPY INTO` command is used to load data into Snowflake tables from internal or external stages efficiently. It supports bulk data loading with various formatting options.
+
+#### Creating a Table for Data Loading
+```sql
+USE DATABASE OUR_FIRST_DB;
+
+CREATE OR REPLACE TABLE OUR_FIRST_DB.PUBLIC.ORDERS (
+    ORDER_ID VARCHAR(30),
+    AMOUNT INT,
+    PROFIT INT,
+    QUANTITY INT,
+    CATEGORY VARCHAR(30),
+    SUBCATEGORY VARCHAR(30));
+```
+
+##### Checking Data in the Table
+```sql
+SELECT * FROM OUR_FIRST_DB.PUBLIC.ORDERS;
+```
+
+#### Syntax
+```sql
+COPY INTO <table_name>
+FROM <stage_location>
+FILE_FORMAT = (TYPE = '<format>' [OPTIONS])
+[ON_ERROR = '<action>']
+```
+
+#### Key Parameters
+- `<table_name>`: Target table where data will be loaded.
+- `<stage_location>`: The stage containing the source data.
+- `FILE_FORMAT`: Specifies the file format (e.g., CSV, JSON, PARQUET) and its properties.
+- `ON_ERROR`: Defines error handling behavior (`ABORT_STATEMENT`, `CONTINUE`, `SKIP_FILE`).
+
+#### Example - Basic Copy Command
+```sql
+COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS
+    FROM @MANAGE_DB.external_stages.aws_stage
+    FILE_FORMAT = (TYPE = CSV FIELD_DELIMITER=',' SKIP_HEADER=1);
+```
+
+#### Example - Copy Command with Fully Qualified Stage Object
+```sql
+COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS
+    FROM @MANAGE_DB.external_stages.aws_stage
+    FILE_FORMAT= (TYPE = CSV FIELD_DELIMITER=',' SKIP_HEADER=1);
+```
+
+#### Example - Copying Specific Files
+```sql
+COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS
+    FROM @MANAGE_DB.external_stages.aws_stage
+    FILE_FORMAT= (TYPE = CSV FIELD_DELIMITER=',' SKIP_HEADER=1)
+    FILES = ('OrderDetails.csv');
+```
+
+#### Example - Copying Files Matching a Pattern
+```sql
+COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS
+    FROM @MANAGE_DB.external_stages.aws_stage
+    FILE_FORMAT= (TYPE = CSV FIELD_DELIMITER=',' SKIP_HEADER=1)
+    PATTERN='.*Order.*';
+```
+
+For detailed options, refer to the [Snowflake Documentation](https://docs.snowflake.com/).
