@@ -48,7 +48,7 @@ CLUSTER BY (order_date);
 
 ### **Best Practices for Cluster Keys**
 - **Choose columns that are frequently used in filters, joins, or sorting.**
-- **Avoid high-cardinality columns**  (e.g., UUID or Transaction IDs), as they don’t provide much clustering benefit.
+- **Avoid high-cardinality columns**  (e.g., `UUID` or `Transaction IDs`), as they don’t provide much clustering benefit.
 - **Monitor query performance using** `QUERY_PROFILE` to assess pruning efficiency.
 - **Recluster tables periodically using** `RECLUSTER` to maintain optimal partitioning:
 
