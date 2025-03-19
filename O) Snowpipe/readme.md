@@ -34,8 +34,6 @@ To create a Snowpipe for automated ingestion, follow these steps:
        event_type STRING
    );
 
-```
-
 2. **Create an External Stage** (Example for AWS S3)
 
 ```sql
