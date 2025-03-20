@@ -1,68 +1,107 @@
-## Snowpipe: Continuous Data Ingestion in Snowflake
+## Snowpipe in Snowflake
 
-### **What is Snowpipe?**
-Snowpipe is **Snowflake's continuous data ingestion service**, designed to automatically **load data from external storage (e.g., AWS S3, Azure Blob, or GCS) into Snowflake tables** in near real-time. Unlike traditional bulk loading, Snowpipe **streams data incrementally**, reducing latency and optimizing compute costs.
+### Overview
 
-### **How Snowpipe Works**
-1. **Files are staged** in an external or Snowflake-internal stage.  
-2. **Snowpipe detects new files** and automatically triggers the ingestion process.  
-3. **Data is loaded into Snowflake tables** using a predefined `COPY INTO` command.  
-4. **Metadata is tracked**, preventing duplicate ingestion.  
+Snowpipe is a continuous data ingestion service in Snowflake that allows you to load data from external cloud storage (AWS S3, Azure Blob, or Google Cloud Storage) into Snowflake tables **automatically and in near real-time**. It eliminates the need for manual batch loading by continuously detecting new files and ingesting them with minimal latency.
 
-### **Benefits of Using Snowpipe**
-1. **Near Real-Time Data Ingestion**  
-   - Loads data **incrementally** as new files arrive, making it ideal for streaming analytics.  
+### How Snowpipe Works
 
-2. **Automated & Serverless**  
-   - No need for manual batch processing; Snowpipe **runs automatically in the background**.  
+1.**Stage the Data**
 
-3. **Optimized Cost Efficiency**  
-   - Uses **pay-per-use pricing**, charging only for the compute time required for ingestion.  
+- Upload files to an external cloud storage service or a Snowflake internal stage. 2.**Create a Pipe**
+- Define a PIPE object that specifies the source location and target table.
 
-4. **Reliable & Scalable**  
-   - Handles large-scale data ingestion seamlessly **without manual intervention**.  
+3. **Automatically Load Data**
 
-### **Creating a Snowpipe**
-To create a Snowpipe for automated ingestion, follow these steps:
+- Snowpipe **monitors the storage location** and loads new data automatically when files arrive.
 
-1. **Create a Table for Data Storage**  
-   ```sql
-   CREATE TABLE raw_events (
-       event_id STRING,
-       event_timestamp TIMESTAMP,
-       user_id STRING,
-       event_type STRING
-   );
+- It uses **event notifications** (AWS S3 EventBridge, Azure Event Grid, Google Pub/Sub) or manual triggering using the `COPY INTO` command.
 
-2. **Create an External Stage** (Example for AWS S3)
+### Key Features
+
+- **Automated Loading** – No need to manually run COPY INTO commands.
+- **Low Latency** – Near real-time ingestion of new data.
+- **Pay-Per-Use** – Charged only for the compute resources used.
+- **Scalability** – Handles large-scale streaming data seamlessly.
+
+### Example: Setting Up Snowpipe
+
+1. **Create a Target Table**
 
 ```sql
-CREATE STAGE my_stage
+
+CREATE OR REPLACE TABLE my_table (
+    id INT,
+    name STRING,
+    created_at TIMESTAMP
+);
+```
+
+2. **Create a Stage (Cloud Storage Connection)**
+
+```sql
+CREATE OR REPLACE STAGE my_stage
 URL = 's3://my-bucket/path/'
-CREDENTIALS = (AWS_KEY_ID = 'your_key' AWS_SECRET_KEY = 'your_secret');
+CREDENTIALS = (AWS_KEY_ID='your_key' AWS_SECRET_KEY='your_secret');
 
 ```
-3. **Define a Snowpipe to Auto-Ingest Data**
+
+3. **Create a Snowpipe for Auto-Loading**
+
 ```sql
-CREATE PIPE my_snowpipe
+CREATE OR REPLACE PIPE my_pipe
 AUTO_INGEST = TRUE
 AS
-COPY INTO raw_events
+COPY INTO my_table
 FROM @my_stage
-FILE_FORMAT = (TYPE = 'CSV' FIELD_OPTIONALLY_ENCLOSED_BY='"');
-
+FILE_FORMAT = (TYPE = 'CSV' SKIP_HEADER = 1);
 ```
 
-4. **Monitor Snowpipe Status**
+4. **Enable Event Notifications (AWS S3)**
+   Configure AWS EventBridge to notify Snowflake whenever a new file is uploaded.
+
+5. **Manually Trigger Snowpipe** (Optional)
+   If AUTO_INGEST is not enabled, you can manually trigger ingestion:
+
 ```sql
-SELECT SYSTEM$PIPE_STATUS('my_snowpipe');
+
+ALTER PIPE my_pipe REFRESH;
 ```
 
-### Best Practices for Snowpipe
-- **Use structured staging areas** to organize incoming data efficiently.
-- **Ensure file formats are optimized** (e.g., Parquet for performance over CSV).
-- **Monitor ingestion** with `COPY_HISTORY` to track processing success.
-- **Integrate with cloud event notifications** (e.g., AWS SNS, Azure Event Grid) for real-time file detection.
+### Monitoring & Troubleshooting
 
+- Check pipe status:
 
-Snowpipe is a powerful solution for seamless, cost-effective, and automated data ingestion, making it an essential component of real-time analytics pipelines in Snowflake.
+```sql
+
+SHOW PIPES;
+```
+
+- View recent loads:
+
+```sql
+
+SELECT * FROM TABLE(INFORMATION_SCHEMA.COPY_HISTORY(TABLE_NAME=>'my_table', START_TIME=>DATEADD(HOUR, -1, CURRENT_TIMESTAMP)));
+```
+
+- View errors:
+
+```sql
+
+SELECT * FROM TABLE(INFORMATION_SCHEMA.LOAD_HISTORY) WHERE PIPE_NAME = 'MY_PIPE';
+```
+
+## When to Use Snowpipe?
+
+✅ When you need near real-time data ingestion.
+✅ When dealing with **incremental** data loads from cloud storage.
+✅ When you want **automated, event-driven** ingestion instead of batch processing.
+
+## When NOT to Use Snowpipe?
+
+❌ If you need **low-latency streaming**, use **Snowflake Streams & Tasks** instead.
+❌ If you’re processing **historical bulk loads**, use **COPY INTO** instead of Snowpipe.
+
+```
+
+```
