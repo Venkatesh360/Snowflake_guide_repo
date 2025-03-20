@@ -93,15 +93,13 @@ SELECT * FROM TABLE(INFORMATION_SCHEMA.LOAD_HISTORY) WHERE PIPE_NAME = 'MY_PIPE'
 
 ## When to Use Snowpipe?
 
-✅ When you need near real-time data ingestion.
-✅ When dealing with **incremental** data loads from cloud storage.
-✅ When you want **automated, event-driven** ingestion instead of batch processing.
+- ✅ When you need near real-time data ingestion.
+- ✅ When dealing with **incremental** data loads from cloud storage.
+- ✅ When you want **automated, event-driven** ingestion instead of batch processing.
 
 ## When NOT to Use Snowpipe?
 
-❌ If you need **low-latency streaming**, use **Snowflake Streams & Tasks** instead.
-❌ If you’re processing **historical bulk loads**, use **COPY INTO** instead of Snowpipe.
+- ❌ If you need **low-latency streaming**, use **Snowflake Streams & Tasks** instead.
+- ❌ If you’re processing **historical bulk loads**, use **COPY INTO** instead of Snowpipe.
 
-```
 
-```
