@@ -1,75 +1,113 @@
-# Data Sampling in Snowflake
+Sampling in Snowflake
 
-## 1. What is Data Sampling?
-Data sampling is a technique used to retrieve a subset of rows from a table instead of querying the entire dataset. This is useful when working with large tables to improve performance and reduce query costs.
+## What is Sampling?
+Sampling is a technique used to retrieve a subset of data from a table instead of scanning the entire dataset. This helps optimize performance, reduce query costs, and allow quick data analysis without processing all rows.
 
-## 2. Sampling Methods in Snowflake
-Snowflake provides the `TABLESAMPLE` clause, which supports three sampling methods:
+Snowflake provides the `TABLESAMPLE` clause, which allows users to select a random subset of rows from a table.
 
-- **Bernoulli Sampling (BERNOULLI)**
-- **System Sampling (SYSTEM)**
-- **Row-Based Sampling (LIMIT)**
+## How Sampling Works in Snowflake
+When a sampling query is executed, Snowflake applies probabilistic methods to choose a subset of rows from the dataset based on the specified percentage. However, the way rows are selected depends on the sampling method chosen.
 
-## 3. Bernoulli Sampling (BERNOULLI)
-- Uses a probabilistic approach, meaning each row has an independent chance of being selected.
-- More random distribution, but may result in variable row counts across runs.
-- Best for scenarios where even distribution is required.
+## Types of Sampling Methods in Snowflake
+Snowflake provides two main types of sampling:
 
-### Example:
+### 1. BERNOULLI Sampling (Row-Level Sampling - True Random Sampling)
+**How it works:**
+
+- Each row in the table is evaluated independently.
+- Each row has an equal probability of being selected.
+- The selected rows are randomly distributed across the table.
+
+**Query Syntax:**
 ```sql
-SELECT * FROM customers TABLESAMPLE BERNOULLI (10);
+SELECT * FROM employees TABLESAMPLE (BERNOULLI, 10);
 ```
-✅ Retrieves approximately 10% of rows from the `customers` table.
+This selects approximately 10% of the total rows in the `employees` table.
 
-## 4. System Sampling (SYSTEM)
-- Uses block-level sampling (Snowflake’s internal storage blocks).
-- Faster than `BERNOULLI` but may introduce bias (some blocks might have more data than others).
-- Best for large datasets when performance is more important than precision.
+**Characteristics:**
 
-### Example:
+- Slower than SYSTEM sampling because each row is processed individually.
+- Useful for cases where a truly random subset is needed.
+- Results may vary if the query is executed multiple times.
+
+### 2. SYSTEM Sampling (Block-Level Sampling - Faster but Less Random)
+**How it works:**
+
+- Snowflake randomly selects micro-partitions instead of individual rows.
+- A micro-partition is a physical storage unit in Snowflake containing multiple rows.
+- If a partition is selected, all rows in that partition are included in the result.
+
+**Query Syntax:**
 ```sql
-SELECT * FROM customers TABLESAMPLE SYSTEM (10);
+SELECT * FROM employees TABLESAMPLE (SYSTEM, 10);
 ```
-✅ Retrieves approximately 10% of the table but may not be as evenly distributed as `BERNOULLI`.
+This selects approximately 10% of the micro-partitions, which can result in more or fewer than 10% of rows, depending on how the data is stored.
 
-## 5. Row-Based Sampling (LIMIT)
-- Retrieves a fixed number of rows.
-- Does not guarantee randomness, as it selects rows based on the table's order.
-- Best for quick previews of data.
+**Characteristics:**
 
-### Example:
+- Much faster than BERNOULLI sampling because it selects entire blocks of data.
+- Less random because all rows in a selected partition are included.
+- Suitable for performance-sensitive queries when full randomness is not required.
+
+## Ensuring Consistent Sampling Results
+By default, Snowflake’s sampling methods return different results each time they are run. To make sampling repeatable, you can use the `REPEATABLE(seed)` option.
+
+**Query Syntax:**
 ```sql
-SELECT * FROM customers LIMIT 100;
+SELECT * FROM employees TABLESAMPLE (BERNOULLI, 10) REPEATABLE(123);
 ```
-✅ Returns exactly 100 rows but may not be randomly distributed.
+- The `123` is a seed value that ensures the same sample is selected each time the query is executed.
+- Different seed values will produce different samples.
 
-## 6. Comparison of Sampling Methods
-| Sampling Method | How It Works | Performance | Best Use Case |
-|----------------|-------------|------------|---------------|
-| BERNOULLI | Random row selection | ❌ Slower | Evenly distributed random samples |
-| SYSTEM | Selects entire storage blocks | ✅ Faster | Large datasets, approximate results |
-| LIMIT | Retrieves fixed number of rows | ✅ Fastest | Quick data previews |
+## Key Differences Between BERNOULLI and SYSTEM Sampling
+| Feature | BERNOULLI Sampling (Row-Level) | SYSTEM Sampling (Partition-Level) |
+|---------|--------------------------------|-----------------------------------|
+| Selection Process | Evaluates each row independently | Selects entire micro-partitions |
+| Randomness | High (truly random) | Less random (depends on partitions) |
+| Performance | Slower (evaluates each row) | Faster (reads partition blocks) |
+| Reproducibility | Different results per execution (unless using REPEATABLE) | Different results per execution (unless using REPEATABLE) |
+| Best Use Case | When you need true randomness | When you need faster sampling |
 
-## 7. Using Sampling with a WHERE Clause
-You can combine `TABLESAMPLE` with a `WHERE` clause for filtered sampling.
+## Can the Same Record Be Chosen More Than Once?
+No, Snowflake sampling is done **without replacement**.
 
-### Example:
+- Each row is either selected once or not at all in a single execution.
+- Unlike methods such as bootstrapping in statistics (which allow duplication), Snowflake does not select the same row more than once.
+
+## When to Use Sampling in Snowflake?
+
+### 1. Exploratory Data Analysis (EDA)
+If you have a large dataset, sampling allows you to quickly inspect data trends.
+
+**Example:** Get a quick preview of customer transactions.
 ```sql
-SELECT * FROM customers 
-TABLESAMPLE BERNOULLI (10)
-WHERE country = 'USA';
+SELECT * FROM transactions TABLESAMPLE (BERNOULLI, 5);
 ```
-✅ Retrieves 10% of U.S. customers from the table.
 
-## 8. Use Cases for Data Sampling
-- **Testing Queries** → Run queries on a small sample before running on the full dataset.
-- **Performance Optimization** → Reduce query execution time and costs.
-- **Exploratory Data Analysis (EDA)** → Get a quick overview of a dataset.
-- **Machine Learning & Analytics** → Train models on a representative dataset before scaling.
+### 2. Machine Learning & Model Training
+Use sampling to train models on a subset of data rather than the full dataset.
 
-## 9. Summary
-| Sampling Method | When to Use |
-|----------------|------------|
-| BERNOULLI | Need truly random sampling |
-| SYSTEM | Large tables where performance matters |
-| LIMIT | Quick preview of a fixed number of rows |
+**Example:** Get 20% of user activity data for model training.
+```sql
+SELECT * FROM user_activity TABLESAMPLE (SYSTEM, 20);
+```
+
+### 3. Testing Queries on a Smaller Dataset
+Before running a complex query on millions of rows, test it on a smaller sample.
+
+**Example:** Debugging an aggregation query.
+```sql
+SELECT category, AVG(price) 
+FROM products TABLESAMPLE (BERNOULLI, 10) 
+GROUP BY category;
+```
+
+### 4. Performance Optimization
+Sampling allows you to run analytics queries faster by reducing the number of scanned rows.
+
+## Conclusion
+Snowflake’s `TABLESAMPLE` provides a powerful way to extract subsets of data for analysis.
+
+- Use **BERNOULLI** for true randomness but expect slightly slower performance.
+- Use **SYSTEM** for faster queries but be aware that entire micro-partitions are selected.
+- Use **REPEATABLE(seed)** to get the same results across multiple executions.
