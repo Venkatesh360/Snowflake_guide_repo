@@ -40,6 +40,3 @@ COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS_EX
     FILES = ('OrderDetails_error.csv','OrderDetails_error2.csv')
     ON_ERROR = 'SKIP_FILE';
 ```
-
-## ON_ERROR = SKIP_FILE_<number>
-```sql
