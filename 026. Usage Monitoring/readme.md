@@ -105,3 +105,73 @@ ORDER BY granted_on DESC;
 ```
 🔹 Ensures correct permissions are assigned.
 
+## Table Storage
+
+This query retrieves storage metrics for all tables in the Snowflake account, providing insights into how much space each table consumes.
+
+```sql
+SELECT * FROM "SNOWFLAKE"."ACCOUNT_USAGE"."TABLE_STORAGE_METRICS";
+```
+
+## How much is queried in databases
+
+The first query retrieves historical query execution data, useful for analyzing database activity and user queries.
+
+```sql
+SELECT * FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY";
+```
+
+The second query aggregates the number of queries and the total cloud service credits consumed per database, helping track database-specific query load and associated costs.
+
+```sql
+SELECT 
+    DATABASE_NAME,
+    COUNT(*) AS NUMBER_OF_QUERIES,
+    SUM(CREDITS_USED_CLOUD_SERVICES)
+FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"
+GROUP BY DATABASE_NAME;
+```
+
+## Usage of credits by warehouses
+
+This query retrieves metering history for Snowflake warehouses, showing how many credits each warehouse has consumed.
+
+```sql
+SELECT * FROM "SNOWFLAKE"."ACCOUNT_USAGE"."WAREHOUSE_METERING_HISTORY";
+```
+
+### Usage of credits by warehouses (Grouped by day)
+
+This query groups warehouse credit usage by day, helping track daily resource consumption trends.
+
+```sql
+SELECT 
+    DATE(START_TIME),
+    SUM(CREDITS_USED)
+FROM "SNOWFLAKE"."ACCOUNT_USAGE"."WAREHOUSE_METERING_HISTORY"
+GROUP BY DATE(START_TIME);
+```
+
+### Usage of credits by warehouses (Grouped by warehouse)
+
+This query groups warehouse credit usage by warehouse name, allowing comparison of resource consumption across different warehouses.
+
+```sql
+SELECT
+    WAREHOUSE_NAME,
+    SUM(CREDITS_USED)
+FROM "SNOWFLAKE"."ACCOUNT_USAGE"."WAREHOUSE_METERING_HISTORY"
+GROUP BY WAREHOUSE_NAME;
+```
+
+### Usage of credits by warehouses (Grouped by warehouse & day)
+
+This query provides a detailed breakdown of credit usage by warehouse and day, useful for tracking daily usage per warehouse.
+
+```sql
+SELECT
+    DATE(START_TIME),
+    WAREHOUSE_NAME,
+    SUM(CREDITS_USED)
+FROM "SNOWFLAKE"."ACCOUNT_USAGE"."WAREHOUSE_METERING_HISTORY"
+GROUP BY WAREHOUSE_NAME, DATE(START_TIME);
